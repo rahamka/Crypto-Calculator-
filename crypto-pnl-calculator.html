@@ -1,0 +1,419 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Crypto P&L Calculator</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=Inter:wght@400;500;600&display=swap');
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:       #0c0d14;
+    --surface:  #141620;
+    --surface2: #1c1f30;
+    --border:   #252840;
+    --accent:   #f0b90b;
+    --profit:   #0ecb81;
+    --loss:     #f6465d;
+    --text:     #e2e4f0;
+    --muted:    #5c6080;
+    --label:    #9095b8;
+  }
+
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+
+  .card {
+    width: 100%;
+    max-width: 460px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  /* Header */
+  .header {
+    padding: 20px 24px 18px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .header-icon {
+    width: 36px;
+    height: 36px;
+    background: rgba(240, 185, 11, 0.12);
+    border: 1px solid rgba(240, 185, 11, 0.25);
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    flex-shrink: 0;
+  }
+  .header-text h1 {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text);
+    letter-spacing: 0.01em;
+  }
+  .header-text p {
+    font-size: 0.72rem;
+    color: var(--muted);
+    margin-top: 1px;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+
+  /* Inputs */
+  .inputs {
+    padding: 20px 24px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .field.full { grid-column: 1 / -1; }
+
+  label {
+    font-size: 0.7rem;
+    font-weight: 500;
+    color: var(--label);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .input-wrap {
+    position: relative;
+  }
+  .input-wrap .unit {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.7rem;
+    color: var(--muted);
+    font-family: 'IBM Plex Mono', monospace;
+    pointer-events: none;
+  }
+
+  input[type="number"] {
+    width: 100%;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 9px 48px 9px 12px;
+    color: var(--text);
+    font-size: 0.88rem;
+    font-family: 'IBM Plex Mono', monospace;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    -moz-appearance: textfield;
+  }
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button { display: none; }
+  input[type="number"]:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(240, 185, 11, 0.1);
+  }
+
+  /* Divider */
+  .section-label {
+    padding: 0 24px 10px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    border-top: 1px solid var(--border);
+    padding-top: 18px;
+  }
+
+  /* Results */
+  .results {
+    padding: 4px 24px 0;
+  }
+
+  .result-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 9px 0;
+    border-bottom: 1px solid rgba(37, 40, 64, 0.6);
+  }
+  .result-row:last-child { border-bottom: none; }
+
+  .r-label {
+    font-size: 0.78rem;
+    color: var(--label);
+  }
+  .r-value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.82rem;
+    color: var(--text);
+    font-weight: 600;
+  }
+
+  /* P&L Block */
+  .pnl-block {
+    margin: 12px 24px 20px;
+    border-radius: 12px;
+    padding: 16px 18px;
+    transition: background 0.3s, border-color 0.3s, box-shadow 0.3s;
+  }
+  .pnl-block.profit-state {
+    background: rgba(14, 203, 129, 0.07);
+    border: 1px solid rgba(14, 203, 129, 0.25);
+    box-shadow: 0 0 20px rgba(14, 203, 129, 0.06);
+  }
+  .pnl-block.loss-state {
+    background: rgba(246, 70, 93, 0.07);
+    border: 1px solid rgba(246, 70, 93, 0.25);
+    box-shadow: 0 0 20px rgba(246, 70, 93, 0.06);
+  }
+
+  .pnl-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 10px;
+  }
+  .pnl-title {
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 4px;
+  }
+  .pnl-usdt {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 1.35rem;
+    font-weight: 600;
+    line-height: 1;
+  }
+  .pnl-usdt.profit { color: var(--profit); }
+  .pnl-usdt.loss   { color: var(--loss); }
+
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+  }
+  .badge.profit { background: rgba(14, 203, 129, 0.15); color: var(--profit); }
+  .badge.loss   { background: rgba(246, 70, 93, 0.15);  color: var(--loss); }
+
+  .pnl-sub {
+    display: flex;
+    gap: 16px;
+  }
+  .pnl-sub-item {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .pnl-sub-label {
+    font-size: 0.65rem;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .pnl-sub-value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.82rem;
+    font-weight: 600;
+  }
+  .pnl-sub-value.profit { color: var(--profit); }
+  .pnl-sub-value.loss   { color: var(--loss); }
+
+  /* Note */
+  .note {
+    margin: 0 24px 20px;
+    background: var(--surface2);
+    border-left: 2px solid var(--accent);
+    border-radius: 0 6px 6px 0;
+    padding: 10px 12px;
+    font-size: 0.72rem;
+    color: var(--muted);
+    line-height: 1.65;
+  }
+  .note strong { color: var(--label); }
+</style>
+</head>
+<body>
+<div class="card">
+
+  <div class="header">
+    <div class="header-icon">🪙</div>
+    <div class="header-text">
+      <h1>Crypto P&L Calculator</h1>
+      <p>Binance Spot · 0.1% fee model</p>
+    </div>
+  </div>
+
+  <div class="inputs">
+    <div class="field">
+      <label>Coins Bought</label>
+      <div class="input-wrap">
+        <input type="number" id="qty" value="0.008571" step="0.000001">
+        <span class="unit">qty</span>
+      </div>
+    </div>
+    <div class="field">
+      <label>Buy Price</label>
+      <div class="input-wrap">
+        <input type="number" id="buyPrice" value="700" step="1">
+        <span class="unit">USDT</span>
+      </div>
+    </div>
+    <div class="field">
+      <label>Sell Price</label>
+      <div class="input-wrap">
+        <input type="number" id="sellPrice" value="730" step="1">
+        <span class="unit">USDT</span>
+      </div>
+    </div>
+    <div class="field">
+      <label>USD → PKR</label>
+      <div class="input-wrap">
+        <input type="number" id="pkrRate" value="278" step="1">
+        <span class="unit">PKR</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="section-label">Breakdown</div>
+
+  <div class="results">
+    <div class="result-row">
+      <span class="r-label">Total Investment</span>
+      <span class="r-value" id="r-invest">—</span>
+    </div>
+    <div class="result-row">
+      <span class="r-label">Coins After Buy Fee</span>
+      <span class="r-value" id="r-coins">—</span>
+    </div>
+    <div class="result-row">
+      <span class="r-label">Gross Sell Value</span>
+      <span class="r-value" id="r-gross">—</span>
+    </div>
+    <div class="result-row">
+      <span class="r-label">Total Fees Paid</span>
+      <span class="r-value" id="r-fees">—</span>
+    </div>
+    <div class="result-row">
+      <span class="r-label">Net Received After Sale</span>
+      <span class="r-value" id="r-net">—</span>
+    </div>
+  </div>
+
+  <div class="pnl-block" id="pnl-block">
+    <div class="pnl-top">
+      <div>
+        <div class="pnl-title">Final P&L</div>
+        <div class="pnl-usdt" id="pnl-usdt">—</div>
+      </div>
+      <span class="badge" id="pnl-badge">—</span>
+    </div>
+    <div class="pnl-sub">
+      <div class="pnl-sub-item">
+        <span class="pnl-sub-label">Change %</span>
+        <span class="pnl-sub-value" id="pnl-pct">—</span>
+      </div>
+      <div class="pnl-sub-item">
+        <span class="pnl-sub-label">In PKR</span>
+        <span class="pnl-sub-value" id="pnl-pkr">—</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>📥 Buy fee:</strong> 0.1% deducted from coins received — you get <em>qty × 0.999</em> coins instead of full qty.<br>
+    <strong>📤 Sell fee:</strong> 0.1% deducted from USDT received — you get <em>gross_value × 0.999</em> after the sale.
+  </div>
+
+</div>
+
+<script>
+  const inputs = ['qty', 'buyPrice', 'sellPrice', 'pkrRate'];
+  inputs.forEach(id => {
+    document.getElementById(id).addEventListener('input', calculate);
+  });
+
+  function f(n, d = 4) {
+    return Number(n).toFixed(d);
+  }
+
+  function calculate() {
+    const qty      = parseFloat(document.getElementById('qty').value)      || 0;
+    const buyPrice = parseFloat(document.getElementById('buyPrice').value)  || 0;
+    const sellPrice= parseFloat(document.getElementById('sellPrice').value) || 0;
+    const pkrRate  = parseFloat(document.getElementById('pkrRate').value)   || 0;
+
+    // Core math
+    const totalInvestment = qty * buyPrice;
+    const coinsAfterFee   = qty * 0.999;
+    const grossSell       = coinsAfterFee * sellPrice;
+    const buyFeeUSDT      = totalInvestment * 0.001;
+    const sellFeeUSDT     = grossSell * 0.001;
+    const totalFees       = buyFeeUSDT + sellFeeUSDT;
+    const netReceived     = grossSell * 0.999;
+    const pnl             = netReceived - totalInvestment;
+    const pnlPct          = totalInvestment > 0 ? (pnl / totalInvestment) * 100 : 0;
+    const pnlPKR          = pnl * pkrRate;
+
+    const isProfit = pnl >= 0;
+    const sign     = isProfit ? '+' : '';
+
+    // Breakdown rows
+    document.getElementById('r-invest').textContent = f(totalInvestment, 4) + ' USDT';
+    document.getElementById('r-coins').textContent  = f(coinsAfterFee, 8) + ' coins';
+    document.getElementById('r-gross').textContent  = f(grossSell, 4) + ' USDT';
+    document.getElementById('r-fees').textContent   = f(totalFees, 6) + ' USDT';
+    document.getElementById('r-net').textContent    = f(netReceived, 4) + ' USDT';
+
+    // P&L block
+    const block = document.getElementById('pnl-block');
+    block.className = 'pnl-block ' + (isProfit ? 'profit-state' : 'loss-state');
+
+    const pnlEl = document.getElementById('pnl-usdt');
+    pnlEl.textContent = sign + f(pnl, 4) + ' USDT';
+    pnlEl.className   = 'pnl-usdt ' + (isProfit ? 'profit' : 'loss');
+
+    const badge = document.getElementById('pnl-badge');
+    badge.textContent = isProfit ? '✓ Profit' : '✗ Loss';
+    badge.className   = 'badge ' + (isProfit ? 'profit' : 'loss');
+
+    const pctEl = document.getElementById('pnl-pct');
+    pctEl.textContent = sign + f(pnlPct, 2) + '%';
+    pctEl.className   = 'pnl-sub-value ' + (isProfit ? 'profit' : 'loss');
+
+    const pkrEl = document.getElementById('pnl-pkr');
+    pkrEl.textContent = sign + f(pnlPKR, 2) + ' ₨';
+    pkrEl.className   = 'pnl-sub-value ' + (isProfit ? 'profit' : 'loss');
+  }
+
+  calculate();
+</script>
+</body>
+</html>
